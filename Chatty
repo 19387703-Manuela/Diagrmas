@@ -1,0 +1,131 @@
+2. Propuesta de Class Diagram para Society Management
+
+Te propongo una estructura interna clara y no excesivamente grande (6-7 clases). Luego tú la dibujas en Papyrus siguiendo el documento de “How to Use Papyrus – Class Diagram”.
+
+2.1. Clases principales (con posibles estereotipos)
+
+SocietyManagementService «control»
+
+Rol: fachada del microservicio, implementa la interfaz ISocietyMgmt de tu component diagram.
+
+Operaciones clave (mínimo estas, puedes añadir más si quieres cubrir todo FR-UO-3):
+
+reviewApplication(appId: int): SocietyApplication
+
+approveApplication(appId: int, officerId: int): void
+
+rejectApplication(appId: int, officerId: int, reason: String): void
+
+SocietyApplication «entity»
+Representa la solicitud de nueva sociedad (datos del FR-UO-3).
+
+Atributos típicos:
+
+applicationId: int
+
+name: String
+
+theme: String
+
+leaderStudentId: String
+
+leaderUserId: String
+
+contactEmail: String
+
+status: ApplicationStatus // PENDING, APPROVED, REJECTED
+
+decisionDate: DateTime
+
+rejectionReason: String
+
+Operaciones:
+
+markApproved(officerId: int): void
+
+markRejected(officerId: int, officerId: int, reason: String): void
+
+Society «entity»
+Sociedad ya aprobada, que debe aparecer en la web del union.
+
+Atributos:
+
+societyId: int
+
+name: String
+
+theme: String
+
+leaderStudentId: String
+
+contactEmail: String
+
+status: SocietyStatus // ACTIVE, INACTIVE
+
+activationDate: DateTime
+
+Operaciones:
+
+activateFromApplication(app: SocietyApplication): void
+
+SocietyRepository «repository» (o «data access»)
+Encapsula acceso a DataStorageService (IDataStorage).
+
+Operaciones:
+
+findApplicationById(appId: int): SocietyApplication
+
+saveApplication(app: SocietyApplication): void
+
+saveSociety(soc: Society): void
+
+NotificationAdapter «boundary»
+Adaptador interno hacia NotificationService (INotification en tu component diagram).
+
+Operaciones:
+
+notifyApproval(app: SocietyApplication): void
+
+notifyRejection(app: SocietyApplication): void
+
+PortalPublisherAdapter «boundary»
+Adaptador hacia el Union Portal (para publicar la nueva sociedad).
+
+Operaciones:
+
+publishSociety(soc: Society): void
+
+(Opcional) UnionOfficer «entity»
+Si quieres modelar también al officer como objeto del componente:
+
+officerId: int
+
+name: String
+
+role: String
+
+2.2. Relaciones
+
+En el class diagram, dibuja al menos estas asociaciones:
+
+SocietyManagementService —– uses ——> SocietyRepository
+
+SocietyManagementService —– uses ——> NotificationAdapter
+
+SocietyManagementService —– uses ——> PortalPublisherAdapter
+
+SocietyRepository —– manages ——> SocietyApplication (1..* aplicaciones)
+
+SocietyRepository —– manages ——> Society (1..* sociedades)
+
+Y, si quieres que quede muy alineado con tu component diagram:
+
+Interfaz ISocietyMgmt como interface UML, con la operación
+approveApplication(appId: int, officerId: int): void,
+y una relación Interface Realization desde SocietyManagementService a ISocietyMgmt.
+
+Con esto tienes un class diagram perfectamente razonable para la Task 5(a), coherente con:
+
+tu component diagram del subsystem,
+
+el caso de uso FR-UO-3 / actividad de “Approve New Society”.
