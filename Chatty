@@ -1,131 +1,89 @@
-2. Propuesta de Class Diagram para Society Management
+3. Propuesta de Sequence Diagram para Society Management
 
-Te propongo una estructura interna clara y no excesivamente grande (6-7 clases). Luego tú la dibujas en Papyrus siguiendo el documento de “How to Use Papyrus – Class Diagram”.
+Ahora, para Task 5(b), tienes que hacer un sequence diagram de la misma operación y mismo componente.
 
-2.1. Clases principales (con posibles estereotipos)
+Te propongo modelar el escenario “Union Officer aprueba o rechaza una solicitud” con un fragmento alt (para cubrir aprobación y rechazo en un único diagrama, como piden que uses frames).
 
-SocietyManagementService «control»
+3.1. Lifelines recomendadas
 
-Rol: fachada del microservicio, implementa la interfaz ISocietyMgmt de tu component diagram.
+En Papyrus, crea lifelines con estos nombres (instancias):
 
-Operaciones clave (mínimo estas, puedes añadir más si quieres cubrir todo FR-UO-3):
+:UnionOfficerUI (opcional, boundary externo, puede ser parte de otro componente pero se ve bien en el flujo).
 
-reviewApplication(appId: int): SocietyApplication
+:SocietyManagementService
 
-approveApplication(appId: int, officerId: int): void
+:SocietyRepository
 
-rejectApplication(appId: int, officerId: int, reason: String): void
+:SocietyApplication
 
-SocietyApplication «entity»
-Representa la solicitud de nueva sociedad (datos del FR-UO-3).
+:Society (se crea solo en la rama de aprobación)
 
-Atributos típicos:
+:NotificationAdapter
 
-applicationId: int
+:PortalPublisherAdapter (solo en la rama de aprobación)
 
-name: String
+3.2. Mensajes básicos
 
-theme: String
+UnionOfficerUI -> SocietyManagementService
 
-leaderStudentId: String
+approveOrRejectApplication(appId, officerId, decision, reason)
+(o separa en approveApplication y rejectApplication, como prefieras; a efectos de diagrama es parecido).
 
-leaderUserId: String
+SocietyManagementService -> SocietyRepository
 
-contactEmail: String
+findApplicationById(appId)
 
-status: ApplicationStatus // PENDING, APPROVED, REJECTED
+SocietyRepository -> SocietyApplication
 
-decisionDate: DateTime
+(devuelve la instancia, puede ser un mensaje de retorno normal).
 
-rejectionReason: String
+A partir de aquí metes un Combined Fragment alt que cubra el resto del flujo:
 
-Operaciones:
+Parte 1 del alt – [decision == APPROVE]
 
-markApproved(officerId: int): void
+Guard: [decision == APPROVE]
+4. SocietyManagementService -> SocietyApplication
 
-markRejected(officerId: int, officerId: int, reason: String): void
+markApproved(officerId)
 
-Society «entity»
-Sociedad ya aprobada, que debe aparecer en la web del union.
+SocietyManagementService -> SocietyRepository
 
-Atributos:
+saveApplication(app)
 
-societyId: int
+SocietyManagementService -> Society (mensaje de creación)
 
-name: String
+createSociety(app) // constructor o activateFromApplication
 
-theme: String
+SocietyManagementService -> SocietyRepository
 
-leaderStudentId: String
+saveSociety(soc)
 
-contactEmail: String
+SocietyManagementService -> NotificationAdapter
 
-status: SocietyStatus // ACTIVE, INACTIVE
+notifyApproval(app)
 
-activationDate: DateTime
+SocietyManagementService -> PortalPublisherAdapter
 
-Operaciones:
+publishSociety(soc)
 
-activateFromApplication(app: SocietyApplication): void
+Mensaje de retorno hacia UnionOfficerUI indicando éxito.
 
-SocietyRepository «repository» (o «data access»)
-Encapsula acceso a DataStorageService (IDataStorage).
+Parte 2 del alt – [decision == REJECT]
 
-Operaciones:
+Guard: [decision == REJECT]
+4'. SocietyManagementService -> SocietyApplication
+- markRejected(officerId, reason)
+5'. SocietyManagementService -> SocietyRepository
+- saveApplication(app)
+6'. SocietyManagementService -> NotificationAdapter
+- notifyRejection(app)
+(no se crea Society, no se llama a PortalPublisherAdapter)
+7'. Retorno a UnionOfficerUI indicando rechazo registrado.
 
-findApplicationById(appId: int): SocietyApplication
+Con esto cubres:
 
-saveApplication(app: SocietyApplication): void
+La lógica de negocio interna del componente.
 
-saveSociety(soc: Society): void
+La interacción con almacenamiento y notificaciones como parte del microservicio.
 
-NotificationAdapter «boundary»
-Adaptador interno hacia NotificationService (INotification en tu component diagram).
-
-Operaciones:
-
-notifyApproval(app: SocietyApplication): void
-
-notifyRejection(app: SocietyApplication): void
-
-PortalPublisherAdapter «boundary»
-Adaptador hacia el Union Portal (para publicar la nueva sociedad).
-
-Operaciones:
-
-publishSociety(soc: Society): void
-
-(Opcional) UnionOfficer «entity»
-Si quieres modelar también al officer como objeto del componente:
-
-officerId: int
-
-name: String
-
-role: String
-
-2.2. Relaciones
-
-En el class diagram, dibuja al menos estas asociaciones:
-
-SocietyManagementService —– uses ——> SocietyRepository
-
-SocietyManagementService —– uses ——> NotificationAdapter
-
-SocietyManagementService —– uses ——> PortalPublisherAdapter
-
-SocietyRepository —– manages ——> SocietyApplication (1..* aplicaciones)
-
-SocietyRepository —– manages ——> Society (1..* sociedades)
-
-Y, si quieres que quede muy alineado con tu component diagram:
-
-Interfaz ISocietyMgmt como interface UML, con la operación
-approveApplication(appId: int, officerId: int): void,
-y una relación Interface Realization desde SocietyManagementService a ISocietyMgmt.
-
-Con esto tienes un class diagram perfectamente razonable para la Task 5(a), coherente con:
-
-tu component diagram del subsystem,
-
-el caso de uso FR-UO-3 / actividad de “Approve New Society”.
+Ambos escenarios (approve / reject) en un solo sequence diagram usando alt, tal y como pide la especificación.
